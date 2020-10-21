@@ -11,8 +11,17 @@ class MyComponent extends Component {
 
 render(<MyComponent>
   <div class="abc">
-    <div>a</div>
-    <div>b</div>
-    <div>c</div>
+    <div class="a">a</div>
+    <div class="b">b</div>
+    <div class="c">c</div>
   </div>
+  <div class="abc">
+    <div class="d">d</div>
+    <div class="e">e</div>
+    <div class="f">f
+      <div class="g">g</div>
+      <div class="h">h</div>
+    </div>
+  </div>
+
 </MyComponent>,document.body);
