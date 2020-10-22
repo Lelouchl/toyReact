@@ -1,10 +1,12 @@
+/** @type {import ("webpack").Configuration}  */
+
 module.exports = {
   entry: {
     main: "./main.js"
   },
   mode: "development",
   optimization: {
-    minimize: false
+    minimize: false,
   },
   module: {
     rules: [
