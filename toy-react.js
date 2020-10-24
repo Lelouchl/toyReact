@@ -1,50 +1,8 @@
 const RENDER_TO_DOM = Symbol("render to dom");
 
-class ElementWarpper {
-  constructor (type) {
-    this.root = document.createElement(type);
-  }
-
-  setAttribute(name,value) {
-    if (name.match(/^on([\s\S]+)$/)) {
-      this.root.addEventListener(RegExp.$1.replace(/^[\s\S]/,c => c.toLowerCase()),value);
-    }else {
-      if (name === "className") {
-        this.root.setAttribute("class",value);
-      }else {
-        this.root.setAttribute(name,value);
-      }
-    }
-  }
-
-  appendChild(component) {
-    let range = document.createRange();
-    range.setStart(this.root,this.root.childNodes.length);
-    range.setEnd(this.root,this.root.childNodes.length);
-    range.deleteContents();
-    component[RENDER_TO_DOM](range);
-  }
-
-  [RENDER_TO_DOM] (range) {
-    range.deleteContents();
-    range.insertNode(this.root);
-  }
-}
-
-class TextWrapper {
-  constructor (content) {
-    this.root = document.createTextNode(content);
-  }
-
-  [RENDER_TO_DOM] (range) {
-    range.deleteContents();
-    range.insertNode(this.root);
-  }
-}
-
 export class Component {
   constructor () {
-    this.props = Object.create(null);
+    this.props = {};
     this.children = [];
     this._root = null;
     this._range = null;
@@ -56,6 +14,14 @@ export class Component {
 
   appendChild(component) {
     this.children.push(component);
+  }
+
+  get vdom () {
+    return this.render().vdom;
+  }
+
+  get vchildren () {
+    return this.children.map(child => child.vdom);
   }
 
   [RENDER_TO_DOM] (range) {
@@ -106,6 +72,99 @@ export class Component {
   //   return this._root;
   // }
 }
+
+class ElementWarpper extends Component {
+  constructor (type) {
+    super(type);
+    this.type = type;
+    this.root = document.createElement(type);
+  }
+
+  // setAttribute(name,value) {
+  //   if (name.match(/^on([\s\S]+)$/)) {
+  //     this.root.addEventListener(RegExp.$1.replace(/^[\s\S]/,c => c.toLowerCase()),value);
+  //   }else {
+  //     if (name === "className") {
+  //       this.root.setAttribute("class",value);
+  //     }else {
+  //       this.root.setAttribute(name,value);
+  //     }
+  //   }
+  // }
+
+  // appendChild(component) {
+  //   let range = document.createRange();
+  //   range.setStart(this.root,this.root.childNodes.length);
+  //   range.setEnd(this.root,this.root.childNodes.length);
+  //   range.deleteContents();
+  //   component[RENDER_TO_DOM](range);
+  // }
+
+  get vdom () {
+    return this;
+    // {
+    //   type: this.type,
+    //   props: this.props,
+    //   children: this.children.map(child => child.vdom)
+    // }
+  }
+
+  [RENDER_TO_DOM] (range) {
+    range.deleteContents();
+
+    const root = document.createElement(this.type);
+
+    for (const name in this.props) {
+      console.log(this.props);
+      if (this.props.hasOwnProperty(name)) {
+        const value = this.props[name];
+            if (name.match(/^on([\s\S]+)$/)) {
+              root.addEventListener(RegExp.$1.replace(/^[\s\S]/,c => c.toLowerCase()),value);
+            }else {
+              if (name === "className") {
+                root.setAttribute("class",value);
+              }else {
+                root.setAttribute(name,value);
+              }
+            }
+      }
+    }
+
+    for (const child of this.children) {
+      const childRange = document.createRange();
+      childRange.setStart(root, root.childNodes.length);
+      childRange.setEnd(root, root.childNodes.length);
+      childRange.deleteContents();
+      child[RENDER_TO_DOM](childRange);
+    }
+
+    range.insertNode(root);
+  }
+}
+
+class TextWrapper extends Component{
+  constructor (content) {
+    super(content);
+    this.type = "#text";
+    this.content = content;
+    this.root = document.createTextNode(content);
+  }
+
+  get vdom () {
+    return this
+    // {
+    //   type: "#text",
+    //   content: this.content
+    // }
+  }
+
+  [RENDER_TO_DOM] (range) {
+    range.deleteContents();
+    range.insertNode(this.root);
+  }
+}
+
+
 
 export function createElement (type, attributes, ...children) {
   let e;
