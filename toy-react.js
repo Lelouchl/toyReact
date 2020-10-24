@@ -6,6 +6,7 @@ export class Component {
     this.children = [];
     this._root = null;
     this._range = null;
+    this._vdom = {};
   }
 
   setAttribute(name,value) {
@@ -20,31 +21,88 @@ export class Component {
     return this.render().vdom;
   }
 
-  get vchildren () {
-    return this.children.map(child => child.vdom);
-  }
+  // get vchildren () {
+  //   return this.children.map(child => child.vdom);
+  // }
 
   [RENDER_TO_DOM] (range) {
     this._range = range;
-    this.render()[RENDER_TO_DOM](range);
+    this._vdom = this.vdom;
+    this._vdom[RENDER_TO_DOM](range);
   }
 
-  rerender() {
-    let oldRange = this._range;
+  update() {
 
-    let range = document.createRange();
-    range.setStart(oldRange.startContainer,oldRange.startOffset);
-    range.setEnd(oldRange.startContainer,oldRange.startOffset);
-    this[RENDER_TO_DOM](range);
+    const isSameNode = (oldNode,newNode) => {
+      // type不同，直接返回false
+      if (oldNode.type !== newNode.type) {
+        return false;
+      }
+      // 比较属性不同
+      for (const name in newNode.props) {
+        if (newNode.props.hasOwnProperty(name)) {
+          const value = newNode.props[name];
+          if (value !== oldNode.props[name]) {
+            return false;
+          }
+        }
+      }
+      // 旧节点属性比新节点多，返回false
+      if (Object.keys(oldNode.props).length > Object.keys(newNode.props).length) {
+        return false;
+      }
+      // 比较文本节点
+      if (newNode.type === "#text") {
+        if (newNode.content !== oldNode.content) {
+          return false;
+        }
+      }
+      return true;
+    }
 
-    oldRange.setStart(range.endContainer,range.endOffset);
-    oldRange.deleteContents();
+    const update = (oldNode,newNode) => {
+      // type, props, children
+      // #text content
+      if (!isSameNode(oldNode,newNode)) {
+        newNode[RENDER_TO_DOM](oldNode._range);
+        return;
+      }
+      newNode._range = oldNode._range;
+
+      const newChildren = newNode.vchildren;
+      const oldChildren = oldNode.vchildren;
+
+      for (let index = 0; index < newChildren.length; index++) {
+        const newChild = newChildren[index];
+        const oldChild = oldChildren[index];
+        if (i < oldChildren.length) {
+          update(oldChild,newChild);
+        }else {
+          // todo
+        }
+      }
+    }
+
+    const vdom = this.vdom;
+    update(this._vdom,vdom)
+    this._vdom = vdom;
   }
+  // rerender() {
+  //   let oldRange = this._range;
+
+  //   let range = document.createRange();
+  //   range.setStart(oldRange.startContainer,oldRange.startOffset);
+  //   range.setEnd(oldRange.startContainer,oldRange.startOffset);
+  //   this[RENDER_TO_DOM](range);
+
+  //   oldRange.setStart(range.endContainer,range.endOffset);
+  //   oldRange.deleteContents();
+  // }
 
   setState(newState) {
     if (this.state === null || typeof this.state !== "object") {
       this.state = newState;
-      this.rerender();
+      // this.rerender();
       return;
     }
 
@@ -62,7 +120,7 @@ export class Component {
     };
 
     merge(this.state,newState);
-    this.rerender();
+    // this.rerender();
   }
 
   // get root() {
@@ -101,6 +159,7 @@ class ElementWarpper extends Component {
   // }
 
   get vdom () {
+    this.vchildren = this.children.map(child => child.vdom);
     return this;
     // {
     //   type: this.type,
@@ -110,12 +169,13 @@ class ElementWarpper extends Component {
   }
 
   [RENDER_TO_DOM] (range) {
+    this._range = range;
+
     range.deleteContents();
 
     const root = document.createElement(this.type);
 
     for (const name in this.props) {
-      console.log(this.props);
       if (this.props.hasOwnProperty(name)) {
         const value = this.props[name];
             if (name.match(/^on([\s\S]+)$/)) {
@@ -130,7 +190,11 @@ class ElementWarpper extends Component {
       }
     }
 
-    for (const child of this.children) {
+    if (!this.vchildren) {
+      this.vchildren = this.children.map(child => child.vdom);
+    }
+
+    for (const child of this.vchildren) {
       const childRange = document.createRange();
       childRange.setStart(root, root.childNodes.length);
       childRange.setEnd(root, root.childNodes.length);
@@ -159,6 +223,7 @@ class TextWrapper extends Component{
   }
 
   [RENDER_TO_DOM] (range) {
+    this._range = range;
     range.deleteContents();
     range.insertNode(this.root);
   }
